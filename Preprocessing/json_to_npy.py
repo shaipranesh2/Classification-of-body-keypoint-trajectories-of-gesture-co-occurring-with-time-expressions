@@ -1,4 +1,5 @@
 #Converts the json file of each frame and joins with all the frames' keyposes into a single .npy file
+
 import subprocess
 import os
 import shutil
@@ -6,13 +7,46 @@ import json
 import sys
 import numpy as np
 
+person_keypose={}
+
+#this function matches the person across frames by measuting the euclidean distance between the keyposes.
+def match(arr,st_gcn):
+	lowest=999999
+	low_id=-1
+	for id in person_keypose.keys():
+		distance=np.linalg.norm(arr-person_keypose[id])
+		if distance<=lowest:
+			low_id=id
+			lowest=distance	
+	if (lowest<=1000 and lowest>=-1000):
+		person_keypose[low_id]=arr
+		n,_,t,_=arr.shape
+		tmp=np.resize(arr,(n,t))
+		st_gcn[:,-1, :,low_id]=tmp
+	else:
+		n,c,t,w=st_gcn.shape
+		new_shape = (n, c, t, w+1)
+		tmp = np.zeros(new_shape)
+		tmp[:, :, :, :-1] = st_gcn
+		st_gcn=tmp
+		n,_,t,_=arr.shape
+		tmp=np.resize(arr,(n,t))
+		st_gcn[:,-1,:,-1]=tmp
+		person_keypose[w]=arr
+	print(np.shape(st_gcn))
+	return st_gcn
+			
+		
+
 if __name__ == '__main__':
-	f = sys.argv[1] # File directory passed in as argument. see run.sh
+	f = sys.argv[1]
 	for file0 in os.listdir(f+'/'):
 		st_graph=None
+		print(file0)
 		for file1 in os.listdir(f+'/'+file0+'/'):
 			if file1[-4:] == "json":
 				json_file=sorted(os.listdir(f+'/'+file0+'/'+file1+'/'))
+				person_keypose={}
 				for file2 in json_file:
 					frame=[]
 					x=[]
@@ -29,49 +63,33 @@ if __name__ == '__main__':
 							x_i=0
 							y_i=1
 							score_i=2
-							if(person>0): # appending multiple person's coordinates.
-								while i <= 17:
-									x[i].append(pose[x_i])
-									x_i+=3
-									y[i].append(pose[y_i])
-									y_i+=3
-									score[i].append(pose[score_i])
-									score_i+=3
-									i+=1
+							while i <= 17:
+								x.append([pose[x_i]])
+								x_i+=3
+								y.append([pose[y_i]])
+								y_i+=3
+								score.append([pose[score_i]])
+								score_i+=3
+								i+=1
+								a=[]
+							a.append(x)
+							a.append(y)
+							a.append(score)
+							a=np.array(a)
+							a=np.resize(a,(3,1,18,1))
+							if not bool(person_keypose):
+								person_keypose[0]=a
+								st_graph=a
+								n, _, t, w = st_graph.shape
+								zero_layer = np.zeros((n, 1, t, w))
+								st_graph = np.concatenate((st_graph, zero_layer),axis=1)
 							else:
-								while i <= 17:
-									x.append([pose[x_i]])
-									x_i+=3
-									y.append([pose[y_i]])
-									y_i+=3
-									score.append([pose[score_i]])
-									score_i+=3
-									i+=1
+								st_graph=match(a, st_graph)
+								n, _, t, w = st_graph.shape
+								zero_layer = np.zeros((n, 1, t, w))
+								st_graph = np.concatenate((st_graph, zero_layer),axis=1)
 							person+=1
-					frame.append(x)
-					frame.append(y)
-					frame.append(score)
-					print(file0,file1,file2)
-					tmp = np.array(frame)
-					if(tmp.shape[-1]==0):
-						continue
-					if(st_graph is not None):
-						tmp_graph = np.array(frame)
-						tmp_graph = np.expand_dims(tmp_graph, axis=1)
-						print(np.shape(tmp_graph))
-						print(np.shape(st_graph))
-						num_zeros = st_graph.shape[-1] - tmp_graph.shape[-1]
-						# when joining the current frames numpy array with the initial one, we check for the bigger numpy array and calculate the difference to pad in the smaller array to match the bigger one.
-						if(num_zeros>0):
-							tmp_graph = np.pad(tmp_graph, [(0, 0)] * (tmp_graph.ndim - 1) + [(0, num_zeros)])
-						elif(num_zeros<0):
-							num_zeros*=-1
-							st_graph = np.pad(st_graph, [(0, 0)] * (st_graph.ndim - 1) + [(0, num_zeros)])
-						st_graph = np.concatenate((st_graph, tmp_graph),axis=1)
-					else:
-						st_graph = np.array(frame)
-						st_graph = np.expand_dims(st_graph, axis=1)
+		st_graph=st_graph[:,:-1,:,:]
 		st_graph=np.expand_dims(st_graph, axis=0)
+		print(np.shape(st_graph))
 		np.save(f+'/'+file0+'/'+file0+'.npy',st_graph)
-		# The npy file has numpy array in the shape of (batch, channel, frame, joint, max_person). here by default I chose batch to be 1.
-		
