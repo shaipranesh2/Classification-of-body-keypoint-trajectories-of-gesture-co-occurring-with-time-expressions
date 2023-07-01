@@ -1,3 +1,8 @@
+"""
+Copyright (c) 2018, Multimedia Laboratary, The Chinese University of Hong Kong
+All rights reserved.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
