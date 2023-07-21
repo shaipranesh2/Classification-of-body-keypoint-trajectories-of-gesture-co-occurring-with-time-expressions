@@ -1,8 +1,3 @@
-"""
-Copyright (c) 2018, Multimedia Laboratary, The Chinese University of Hong Kong
-All rights reserved.
-"""
-
 import numpy as np
 
 class Graph():
@@ -75,6 +70,16 @@ class Graph():
             neighbor_link = [(i - 1, j - 1) for (i, j) in neighbor_1base]
             self.edge = self_link + neighbor_link
             self.center = 2
+        elif layout == 'openpose_25':
+            self.num_node = 25
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_link = [(4, 3), (3, 2), (7, 6), (6, 5), (13, 12), (12,
+                                                                        8),
+                             (10, 9), (9, 8), (11, 24), (8, 1), (5, 1), (2, 1),
+                             (0, 1), (15, 0), (16, 0), (17, 15), (16, 18),(10, 11),
+                             (23,22),(11,22),(13,14),(21,14),(19,14),(20,19)]
+            self.edge = self_link + neighbor_link
+            self.center = 1
         # elif layout=='customer settings'
         #     pass
         else:

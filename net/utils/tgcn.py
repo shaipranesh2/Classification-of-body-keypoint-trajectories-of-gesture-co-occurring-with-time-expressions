@@ -1,7 +1,3 @@
-"""
-Copyright (c) 2018, Multimedia Laboratary, The Chinese University of Hong Kong
-All rights reserved.
-"""
 # The based unit of graph convolutional networks.
 
 import torch
