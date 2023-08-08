@@ -1,8 +1,3 @@
-"""
-Copyright (c) 2018, Multimedia Laboratary, The Chinese University of Hong Kong
-All rights reserved.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,6 +5,8 @@ from torch.autograd import Variable
 
 from net.utils.tgcn import ConvTemporalGraphical
 from net.utils.graph import Graph
+
+from torch.nn.utils import weight_norm
 
 class Model(nn.Module):
     r"""Spatial temporal graph convolutional networks.
@@ -42,21 +39,17 @@ class Model(nn.Module):
 
         # build networks
         spatial_kernel_size = A.size(0)
-        temporal_kernel_size = 9
+        temporal_kernel_size = 19
         kernel_size = (temporal_kernel_size, spatial_kernel_size)
         self.data_bn = nn.BatchNorm1d(in_channels * A.size(1))
         kwargs0 = {k: v for k, v in kwargs.items() if k != 'dropout'}
         self.st_gcn_networks = nn.ModuleList((
-            st_gcn(in_channels, 64, kernel_size, 1, residual=False, **kwargs0),
+            st_gcn(in_channels, 16, kernel_size, 1, residual=False, **kwargs0),
+            st_gcn(16, 16, kernel_size, 1, **kwargs),
+            st_gcn(16, 32, kernel_size, 2, **kwargs),
+            st_gcn(32, 32, kernel_size, 1, **kwargs),
+            st_gcn(32, 64, kernel_size, 2, **kwargs),
             st_gcn(64, 64, kernel_size, 1, **kwargs),
-            st_gcn(64, 64, kernel_size, 1, **kwargs),
-            st_gcn(64, 64, kernel_size, 1, **kwargs),
-            st_gcn(64, 128, kernel_size, 2, **kwargs),
-            st_gcn(128, 128, kernel_size, 1, **kwargs),
-            st_gcn(128, 128, kernel_size, 1, **kwargs),
-            st_gcn(128, 256, kernel_size, 2, **kwargs),
-            st_gcn(256, 256, kernel_size, 1, **kwargs),
-            st_gcn(256, 256, kernel_size, 1, **kwargs),
         ))
 
         # initialize parameters for edge importance weighting
@@ -69,7 +62,9 @@ class Model(nn.Module):
             self.edge_importance = [1] * len(self.st_gcn_networks)
 
         # fcn for prediction
-        self.fcn = nn.Conv2d(256, num_class, kernel_size=1)
+        self.fcn = nn.Conv2d(64, 64, kernel_size=1)
+        self.lin = weight_norm(nn.Linear(64, num_class, bias =True), dim=None)
+        self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, x):
 
@@ -93,7 +88,8 @@ class Model(nn.Module):
         # prediction
         x = self.fcn(x)
         x = x.view(x.size(0), -1)
-
+        x = self.lin(x)
+        x = self.softmax(x)
         return x
 
     def extract_feature(self, x):
@@ -117,7 +113,8 @@ class Model(nn.Module):
         # prediction
         x = self.fcn(x)
         output = x.view(N, M, -1, t, v).permute(0, 2, 3, 4, 1)
-
+        output = self.lin(output)
+        output = self.softmax(output)
         return output, feature
 
 class st_gcn(nn.Module):
@@ -150,7 +147,7 @@ class st_gcn(nn.Module):
                  out_channels,
                  kernel_size,
                  stride=1,
-                 dropout=0,
+                 dropout=15,
                  residual=True):
         super().__init__()
 
@@ -194,13 +191,9 @@ class st_gcn(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x, A):
-
         res = self.residual(x)
         x, A = self.gcn(x, A)
         x = self.tcn(x) + res
 
         return self.relu(x), A
 
-
-if __name__=='__main__':
-    
