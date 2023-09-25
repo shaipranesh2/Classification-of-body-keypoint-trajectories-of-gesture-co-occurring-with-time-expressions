@@ -80,6 +80,12 @@ class Graph():
                              (23,22),(11,22),(13,14),(21,14),(19,14),(20,19)]
             self.edge = self_link + neighbor_link
             self.center = 1
+        elif layout == 'openpose_arm':
+            self.num_node = 9
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_link = [(0,1),(1,2),(1,5),(2,3),(3,4),(5,6),(6,7),(1,8)]
+            self.edge = self_link + neighbor_link
+            self.center = 1
         # elif layout=='customer settings'
         #     pass
         else:
