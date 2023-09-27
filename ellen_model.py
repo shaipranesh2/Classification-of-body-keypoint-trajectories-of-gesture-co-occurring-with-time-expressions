@@ -28,7 +28,6 @@ train_pth = torch.load("train_dataloader_ellen.pth")
 train_loader = DataLoader(dataset=train_pth, batch_size=batch_size, shuffle=True)
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-print(torch.cuda.is_available())
 model = Model(3, 1, {'layout':'openpose_arm', 'strategy':'spatial'}, True).to(device)
 # the below lines can be uncommented to use them to load the weights from appropriate file path
 # pretrained_dict = torch.load('./weights_arm/0.pt')
@@ -53,7 +52,6 @@ train_loss_list = []
 test_acc_list = []
 test_loss_list = []
 
-print(train_loader)
 
 for epoch in range(0,200):
     epoch_loss = []
@@ -83,7 +81,6 @@ for epoch in range(0,200):
             )
             bar.update(1)
             bar.refresh()
-        #scheduler.step()
     print(float(print_acc)/(len(train_loader)))
     print(float(print_los)/(len(train_loader)))
     train_acc_list.append(float(print_acc)/(len(train_loader)*batch_size))
@@ -120,13 +117,11 @@ for epoch in range(0,200):
                 print_los+=float(loss)
                 bar.update(1)
                 bar.refresh()
-                #print(actual_label.size()[0])
     print(print_los/len(test_loader))
     print(print_acc/(len(test_loader)))
     test_acc_list.append(float(print_acc)/(len(test_loader)*batch_size))
     test_loss_list.append(float(print_los)/(len(test_loader)*batch_size))
     logging.info(f"Test Accuracy: {float(print_acc)/len(test_loader):.16f}, Test Loss: {float(print_los)/len(test_loader):.16f}")
-    #scheduler.step()
     optimizer.zero_grad()
 
 x_axis = [i for i in range(len(test_acc_list))]
@@ -137,7 +132,7 @@ plt.close()
 
 x_axis = [i for i in range(len(test_acc_list))]
 plt.plot(x_axis, train_acc_list, 'r-')
-plt.title('Test accuracy')
+plt.title('Train accuracy')
 plt.savefig('Train-acc.jpg')
 plt.close()
 
